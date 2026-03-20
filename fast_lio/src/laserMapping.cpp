@@ -629,6 +629,9 @@ void publish_odometry(const rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPt
     odomAftMapped.child_frame_id = "blueboat/base_link_enu";
     odomAftMapped.header.stamp = get_ros_time(lidar_end_time);
     set_posestamp(odomAftMapped.pose);
+    odomAftMapped.twist.twist.linear.x = state_point.vel(0);
+    odomAftMapped.twist.twist.linear.y = state_point.vel(1);
+    odomAftMapped.twist.twist.linear.z = state_point.vel(2);
     pubOdomAftMapped->publish(odomAftMapped);
     auto P = kf.get_P();
     for (int i = 0; i < 6; i ++)
