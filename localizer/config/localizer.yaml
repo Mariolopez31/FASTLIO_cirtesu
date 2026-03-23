@@ -1,5 +1,5 @@
-cloud_topic: /cloud_registered_body
-odom_topic: /Odometry
+cloud_topic: /fastlio2/body_cloud
+odom_topic: /fastlio2/lio_odom
 map_frame: map
 local_frame: odom
 update_hz: 1.0
