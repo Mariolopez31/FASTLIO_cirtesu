@@ -4,7 +4,8 @@
 #include <memory>
 #include <iostream>
 #include <chrono>
-// #include <filesystem>
+#include <cmath>
+
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/imu.hpp>
 #include <livox_ros_driver2/msg/custom_msg.hpp>
@@ -22,14 +23,16 @@
 #include <yaml-cpp/yaml.h>
 
 using namespace std::chrono_literals;
+
 struct NodeConfig
 {
     std::string imu_topic = "/livox/imu";
     std::string lidar_topic = "/livox/lidar";
-    std::string body_frame = "body";
-    std::string world_frame = "lidar";
+    std::string body_frame = "blueboat_base_link_enu";
+    std::string world_frame = "odom";
     bool print_time_cost = false;
 };
+
 struct StateData
 {
     bool lidar_pushed = false;
@@ -50,8 +53,13 @@ public:
         RCLCPP_INFO(this->get_logger(), "LIO Node Started");
         loadParameters();
 
-        m_imu_sub = this->create_subscription<sensor_msgs::msg::Imu>(m_node_config.imu_topic, 10, std::bind(&LIONode::imuCB, this, std::placeholders::_1));
-        m_lidar_sub = this->create_subscription<livox_ros_driver2::msg::CustomMsg>(m_node_config.lidar_topic, 10, std::bind(&LIONode::lidarCB, this, std::placeholders::_1));
+        m_imu_sub = this->create_subscription<sensor_msgs::msg::Imu>(
+            m_node_config.imu_topic, 10,
+            std::bind(&LIONode::imuCB, this, std::placeholders::_1));
+
+        m_lidar_sub = this->create_subscription<livox_ros_driver2::msg::CustomMsg>(
+            m_node_config.lidar_topic, 10,
+            std::bind(&LIONode::lidarCB, this, std::placeholders::_1));
 
         m_body_cloud_pub = this->create_publisher<sensor_msgs::msg::PointCloud2>("body_cloud", 10000);
         m_world_cloud_pub = this->create_publisher<sensor_msgs::msg::PointCloud2>("world_cloud", 10000);
@@ -64,6 +72,7 @@ public:
 
         m_kf = std::make_shared<IESKF>();
         m_builder = std::make_shared<MapBuilder>(m_builder_config, m_kf);
+
         m_timer = this->create_wall_timer(20ms, std::bind(&LIONode::timerCB, this));
     }
 
@@ -106,10 +115,13 @@ public:
         m_builder_config.ieskf_max_iter = config["ieskf_max_iter"].as<int>();
         m_builder_config.gravity_align = config["gravity_align"].as<bool>();
         m_builder_config.esti_il = config["esti_il"].as<bool>();
+
         std::vector<double> t_il_vec = config["t_il"].as<std::vector<double>>();
         std::vector<double> r_il_vec = config["r_il"].as<std::vector<double>>();
         m_builder_config.t_il << t_il_vec[0], t_il_vec[1], t_il_vec[2];
-        m_builder_config.r_il << r_il_vec[0], r_il_vec[1], r_il_vec[2], r_il_vec[3], r_il_vec[4], r_il_vec[5], r_il_vec[6], r_il_vec[7], r_il_vec[8];
+        m_builder_config.r_il << r_il_vec[0], r_il_vec[1], r_il_vec[2],
+                                 r_il_vec[3], r_il_vec[4], r_il_vec[5],
+                                 r_il_vec[6], r_il_vec[7], r_il_vec[8];
         m_builder_config.lidar_cov_inv = config["lidar_cov_inv"].as<double>();
     }
 
@@ -117,26 +129,38 @@ public:
     {
         std::lock_guard<std::mutex> lock(m_state_data.imu_mutex);
         double timestamp = Utils::getSec(msg->header);
+
         if (timestamp < m_state_data.last_imu_time)
         {
             RCLCPP_WARN(this->get_logger(), "IMU Message is out of order");
             std::deque<IMUData>().swap(m_state_data.imu_buffer);
         }
-        m_state_data.imu_buffer.emplace_back(V3D(msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z) * 10.0,
-                                             V3D(msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z),
-                                             timestamp);
+
+        m_state_data.imu_buffer.emplace_back(
+            V3D(msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z) * 10.0,
+            V3D(msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z),
+            timestamp);
+
         m_state_data.last_imu_time = timestamp;
     }
+
     void lidarCB(const livox_ros_driver2::msg::CustomMsg::SharedPtr msg)
     {
-        CloudType::Ptr cloud = Utils::livox2PCL(msg, m_builder_config.lidar_filter_num, m_builder_config.lidar_min_range, m_builder_config.lidar_max_range);
+        CloudType::Ptr cloud = Utils::livox2PCL(
+            msg,
+            m_builder_config.lidar_filter_num,
+            m_builder_config.lidar_min_range,
+            m_builder_config.lidar_max_range);
+
         std::lock_guard<std::mutex> lock(m_state_data.lidar_mutex);
         double timestamp = Utils::getSec(msg->header);
+
         if (timestamp < m_state_data.last_lidar_time)
         {
             RCLCPP_WARN(this->get_logger(), "Lidar Message is out of order");
             std::deque<std::pair<double, pcl::PointCloud<pcl::PointXYZINormal>::Ptr>>().swap(m_state_data.lidar_buffer);
         }
+
         m_state_data.lidar_buffer.emplace_back(timestamp, cloud);
         m_state_data.last_lidar_time = timestamp;
     }
@@ -145,15 +169,23 @@ public:
     {
         if (m_state_data.imu_buffer.empty() || m_state_data.lidar_buffer.empty())
             return false;
+
         if (!m_state_data.lidar_pushed)
         {
             m_package.cloud = m_state_data.lidar_buffer.front().second;
-            std::sort(m_package.cloud->points.begin(), m_package.cloud->points.end(), [](PointType &p1, PointType &p2)
-                      { return p1.curvature < p2.curvature; });
+            std::sort(
+                m_package.cloud->points.begin(),
+                m_package.cloud->points.end(),
+                [](PointType &p1, PointType &p2)
+                {
+                    return p1.curvature < p2.curvature;
+                });
+
             m_package.cloud_start_time = m_state_data.lidar_buffer.front().first;
             m_package.cloud_end_time = m_package.cloud_start_time + m_package.cloud->points.back().curvature / 1000.0;
             m_state_data.lidar_pushed = true;
         }
+
         if (m_state_data.last_imu_time < m_package.cloud_end_time)
             return false;
 
@@ -163,15 +195,82 @@ public:
             m_package.imus.emplace_back(m_state_data.imu_buffer.front());
             m_state_data.imu_buffer.pop_front();
         }
+
         m_state_data.lidar_buffer.pop_front();
         m_state_data.lidar_pushed = false;
         return true;
     }
 
-    void publishCloud(rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub, CloudType::Ptr cloud, std::string frame_id, const double &time)
+    // --------------------------------------------------------------------------
+    //  Fixed transforms from your URDF
+    // --------------------------------------------------------------------------
+
+    // base_link_enu -> livox_frame
+    void getBaseEnuToLivox(Eigen::Matrix3d &R_bl, Eigen::Vector3d &t_bl) const
+    {
+        // base_link_enu -> base_link
+        Eigen::AngleAxisd aa_enu_to_ned(M_PI, Eigen::Vector3d::UnitX());
+        Eigen::Matrix3d R_enu_to_ned = aa_enu_to_ned.toRotationMatrix();
+
+        // base_link -> livox_frame  (from URDF)
+        // <origin xyz="0.39 -0.36 -0.05" rpy="3.1416 0 1.57"/>
+        Eigen::AngleAxisd roll_livox(M_PI, Eigen::Vector3d::UnitX());
+        Eigen::AngleAxisd pitch_livox(0.0, Eigen::Vector3d::UnitY());
+        Eigen::AngleAxisd yaw_livox(M_PI / 2.0, Eigen::Vector3d::UnitZ());
+
+        Eigen::Matrix3d R_ned_to_livox =
+            (yaw_livox * pitch_livox * roll_livox).toRotationMatrix();
+
+        Eigen::Vector3d t_ned_to_livox(0.39, -0.36, -0.05);
+
+        // Compose: base_link_enu -> livox_frame
+        R_bl = R_enu_to_ned * R_ned_to_livox;
+        t_bl = R_enu_to_ned * t_ned_to_livox;
+    }
+
+    // odom/world -> base_link_enu
+    // FAST-LIO internally estimates the Livox/IMU pose; this converts it to the boat base pose.
+    void getWorldToBaseEnu(Eigen::Matrix3d &R_wb, Eigen::Vector3d &t_wb) const
+    {
+        // Estimated pose from FAST-LIO (sensor / IMU frame)
+        Eigen::Matrix3d R_wl = m_kf->x().r_wi;
+        Eigen::Vector3d t_wl = m_kf->x().t_wi;
+
+        // Known fixed transform: base_link_enu -> livox_frame
+        Eigen::Matrix3d R_bl;
+        Eigen::Vector3d t_bl;
+        getBaseEnuToLivox(R_bl, t_bl);
+
+        // Inverse: livox_frame -> base_link_enu
+        Eigen::Matrix3d R_lb = R_bl.transpose();
+        Eigen::Vector3d t_lb = -R_lb * t_bl;
+
+        // world -> base_link_enu
+        R_wb = R_wl * R_lb;
+        t_wb = t_wl + R_wl * t_lb;
+    }
+
+    // world -> livox using corrected base pose and known base->livox fixed transform
+    void getWorldToLivoxFromBase(Eigen::Matrix3d &R_wl, Eigen::Vector3d &t_wl) const
+    {
+        Eigen::Matrix3d R_wb;
+        Eigen::Vector3d t_wb;
+        getWorldToBaseEnu(R_wb, t_wb);
+
+        Eigen::Matrix3d R_bl;
+        Eigen::Vector3d t_bl;
+        getBaseEnuToLivox(R_bl, t_bl);
+
+        R_wl = R_wb * R_bl;
+        t_wl = t_wb + R_wb * t_bl;
+    }
+
+    void publishCloud(rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub,
+                      CloudType::Ptr cloud, const std::string &frame_id, const double &time)
     {
         if (pub->get_subscription_count() <= 0)
             return;
+
         sensor_msgs::msg::PointCloud2 cloud_msg;
         pcl::toROSMsg(*cloud, cloud_msg);
         cloud_msg.header.frame_id = frame_id;
@@ -179,64 +278,90 @@ public:
         pub->publish(cloud_msg);
     }
 
-    void publishOdometry(rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub, std::string frame_id, std::string child_frame, const double &time)
+    void publishOdometry(rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub,
+                         const std::string &frame_id, const std::string &child_frame, const double &time)
     {
         if (odom_pub->get_subscription_count() <= 0)
             return;
+
         nav_msgs::msg::Odometry odom;
         odom.header.frame_id = frame_id;
         odom.header.stamp = Utils::getTime(time);
         odom.child_frame_id = child_frame;
-        odom.pose.pose.position.x = m_kf->x().t_wi.x();
-        odom.pose.pose.position.y = m_kf->x().t_wi.y();
-        odom.pose.pose.position.z = m_kf->x().t_wi.z();
-        Eigen::Quaterniond q(m_kf->x().r_wi);
+
+        Eigen::Matrix3d R_wb;
+        Eigen::Vector3d t_wb;
+        getWorldToBaseEnu(R_wb, t_wb);
+
+        odom.pose.pose.position.x = t_wb.x();
+        odom.pose.pose.position.y = t_wb.y();
+        odom.pose.pose.position.z = t_wb.z();
+
+        Eigen::Quaterniond q(R_wb);
         odom.pose.pose.orientation.x = q.x();
         odom.pose.pose.orientation.y = q.y();
         odom.pose.pose.orientation.z = q.z();
         odom.pose.pose.orientation.w = q.w();
 
+        // Keep velocity as original estimator output for now.
+        // This is good enough for initial validation of frames.
         V3D vel = m_kf->x().r_wi.transpose() * m_kf->x().v;
         odom.twist.twist.linear.x = vel.x();
         odom.twist.twist.linear.y = vel.y();
         odom.twist.twist.linear.z = vel.z();
+
         odom_pub->publish(odom);
     }
 
-    void publishPath(rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub, std::string frame_id, const double &time)
+    void publishPath(rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub,
+                     const std::string &frame_id, const double &time)
     {
         if (path_pub->get_subscription_count() <= 0)
             return;
+
+        Eigen::Matrix3d R_wb;
+        Eigen::Vector3d t_wb;
+        getWorldToBaseEnu(R_wb, t_wb);
+
         geometry_msgs::msg::PoseStamped pose;
         pose.header.frame_id = frame_id;
         pose.header.stamp = Utils::getTime(time);
-        pose.pose.position.x = m_kf->x().t_wi.x();
-        pose.pose.position.y = m_kf->x().t_wi.y();
-        pose.pose.position.z = m_kf->x().t_wi.z();
-        Eigen::Quaterniond q(m_kf->x().r_wi);
+        pose.pose.position.x = t_wb.x();
+        pose.pose.position.y = t_wb.y();
+        pose.pose.position.z = t_wb.z();
+
+        Eigen::Quaterniond q(R_wb);
         pose.pose.orientation.x = q.x();
         pose.pose.orientation.y = q.y();
         pose.pose.orientation.z = q.z();
         pose.pose.orientation.w = q.w();
+
         m_state_data.path.poses.push_back(pose);
         path_pub->publish(m_state_data.path);
     }
 
-    void broadCastTF(std::shared_ptr<tf2_ros::TransformBroadcaster> broad_caster, std::string frame_id, std::string child_frame, const double &time)
+    void broadCastTF(std::shared_ptr<tf2_ros::TransformBroadcaster> broad_caster,
+                     const std::string &frame_id, const std::string &child_frame, const double &time)
     {
         geometry_msgs::msg::TransformStamped transformStamped;
         transformStamped.header.frame_id = frame_id;
         transformStamped.child_frame_id = child_frame;
         transformStamped.header.stamp = Utils::getTime(time);
-        Eigen::Quaterniond q(m_kf->x().r_wi);
-        V3D t = m_kf->x().t_wi;
-        transformStamped.transform.translation.x = t.x();
-        transformStamped.transform.translation.y = t.y();
-        transformStamped.transform.translation.z = t.z();
+
+        Eigen::Matrix3d R_wb;
+        Eigen::Vector3d t_wb;
+        getWorldToBaseEnu(R_wb, t_wb);
+
+        Eigen::Quaterniond q(R_wb);
+
+        transformStamped.transform.translation.x = t_wb.x();
+        transformStamped.transform.translation.y = t_wb.y();
+        transformStamped.transform.translation.z = t_wb.z();
         transformStamped.transform.rotation.x = q.x();
         transformStamped.transform.rotation.y = q.y();
         transformStamped.transform.rotation.z = q.z();
         transformStamped.transform.rotation.w = q.w();
+
         broad_caster->sendTransform(transformStamped);
     }
 
@@ -244,32 +369,66 @@ public:
     {
         if (!syncPackage())
             return;
+
         auto t1 = std::chrono::high_resolution_clock::now();
         m_builder->process(m_package);
         auto t2 = std::chrono::high_resolution_clock::now();
 
         if (m_node_config.print_time_cost)
         {
-            auto time_used = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count() * 1000;
+            auto time_used =
+                std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count() * 1000.0;
             RCLCPP_WARN(this->get_logger(), "Time cost: %.2f ms", time_used);
         }
 
         if (m_builder->status() != BuilderStatus::MAPPING)
             return;
 
-        broadCastTF(m_tf_broadcaster, m_node_config.world_frame, m_node_config.body_frame, m_package.cloud_end_time);
+        // Publish corrected TF / odom / path as boat base_link_enu
+        broadCastTF(
+            m_tf_broadcaster,
+            m_node_config.world_frame,
+            m_node_config.body_frame,
+            m_package.cloud_end_time);
 
-        publishOdometry(m_odom_pub, m_node_config.world_frame, m_node_config.body_frame, m_package.cloud_end_time);
+        publishOdometry(
+            m_odom_pub,
+            m_node_config.world_frame,
+            m_node_config.body_frame,
+            m_package.cloud_end_time);
 
-        CloudType::Ptr body_cloud = m_builder->lidar_processor()->transformCloud(m_package.cloud, m_kf->x().r_il, m_kf->x().t_il);
+        // body_cloud in base_link_enu
+        Eigen::Matrix3d R_bl;
+        Eigen::Vector3d t_bl;
+        getBaseEnuToLivox(R_bl, t_bl);
 
-        publishCloud(m_body_cloud_pub, body_cloud, m_node_config.body_frame, m_package.cloud_end_time);
+        CloudType::Ptr body_cloud =
+            m_builder->lidar_processor()->transformCloud(m_package.cloud, R_bl, t_bl);
 
-        CloudType::Ptr world_cloud = m_builder->lidar_processor()->transformCloud(m_package.cloud, m_builder->lidar_processor()->r_wl(), m_builder->lidar_processor()->t_wl());
+        publishCloud(
+            m_body_cloud_pub,
+            body_cloud,
+            m_node_config.body_frame,
+            m_package.cloud_end_time);
 
-        publishCloud(m_world_cloud_pub, world_cloud, m_node_config.world_frame, m_package.cloud_end_time);
+        // world_cloud in world_frame, consistent with corrected base pose
+        Eigen::Matrix3d R_wl_corr;
+        Eigen::Vector3d t_wl_corr;
+        getWorldToLivoxFromBase(R_wl_corr, t_wl_corr);
 
-        publishPath(m_path_pub, m_node_config.world_frame, m_package.cloud_end_time);
+        CloudType::Ptr world_cloud =
+            m_builder->lidar_processor()->transformCloud(m_package.cloud, R_wl_corr, t_wl_corr);
+
+        publishCloud(
+            m_world_cloud_pub,
+            world_cloud,
+            m_node_config.world_frame,
+            m_package.cloud_end_time);
+
+        publishPath(
+            m_path_pub,
+            m_node_config.world_frame,
+            m_package.cloud_end_time);
     }
 
 private:
