@@ -1,5 +1,5 @@
-imu_topic: /livox/imu
-lidar_topic: /livox/lidar
+imu_topic: /blueboat/navigator/imu
+lidar_topic: /stonefish_ros2/blueboat/livox
 body_frame: blueboat/base_link_enu
 world_frame: odom
 print_time_cost: false
