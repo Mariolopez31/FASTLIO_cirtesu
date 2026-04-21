@@ -625,6 +625,7 @@ void set_posestamp(T & out)
 
 void publish_odometry(const rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr pubOdomAftMapped, std::unique_ptr<tf2_ros::TransformBroadcaster> & tf_br)
 {
+    const V3D angvel = p_imu->get_angvel_last();
     odomAftMapped.header.frame_id = "map";
     odomAftMapped.child_frame_id = "blueboat/base_link_enu";
     odomAftMapped.header.stamp = get_ros_time(lidar_end_time);
@@ -632,6 +633,9 @@ void publish_odometry(const rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPt
     odomAftMapped.twist.twist.linear.x = state_point.vel(0);
     odomAftMapped.twist.twist.linear.y = state_point.vel(1);
     odomAftMapped.twist.twist.linear.z = state_point.vel(2);
+    odomAftMapped.twist.twist.angular.x = angvel(0);
+    odomAftMapped.twist.twist.angular.y = angvel(1);
+    odomAftMapped.twist.twist.angular.z = angvel(2);
     pubOdomAftMapped->publish(odomAftMapped);
     auto P = kf.get_P();
     for (int i = 0; i < 6; i ++)
