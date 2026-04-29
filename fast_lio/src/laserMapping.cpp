@@ -45,6 +45,7 @@
 #include <so3_math.h>
 #include <rclcpp/rclcpp.hpp>
 #include <Eigen/Core>
+#include <Eigen/Geometry>
 #include "IMU_Processing.hpp"
 #include <nav_msgs/msg/odometry.hpp>
 #include <nav_msgs/msg/path.hpp>
@@ -147,6 +148,12 @@ nav_msgs::msg::Path path;
 nav_msgs::msg::Odometry odomAftMapped;
 geometry_msgs::msg::Quaternion geoQuat;
 geometry_msgs::msg::PoseStamped msg_body_pose;
+V3D odom_body_position(Zero3d);
+M3D odom_body_rotation(Eye3d);
+bool odom_map_initialized = false;
+V3D odom_map_origin_position(Zero3d);
+M3D odom_map_alignment_rotation(Eye3d);
+V3D base_link_enu_to_livox_translation(0.39, 0.36, 0.05);
 
 shared_ptr<Preprocess> p_pre(new Preprocess());
 shared_ptr<ImuProcess> p_imu(new ImuProcess());
@@ -173,6 +180,69 @@ inline void dump_lio_state_to_log(FILE *fp)
     fprintf(fp, "%lf %lf %lf ", state_point.grav[0], state_point.grav[1], state_point.grav[2]); // Bias_a  
     fprintf(fp, "\r\n");  
     fflush(fp);
+}
+
+M3D baseLinkEnuFromLivoxRotation()
+{
+    M3D R;
+    R << 0.0,  1.0, 0.0,
+        -1.0,  0.0, 0.0,
+         0.0,  0.0, 1.0;
+    return R;
+}
+
+V3D baseLinkEnuToLivoxTranslation()
+{
+    return base_link_enu_to_livox_translation;
+}
+
+void computeBaseLinkEnuPose(const state_ikfom & state, V3D & position, M3D & rotation)
+{
+    const M3D R_world_livox = state.rot.toRotationMatrix();
+    const M3D R_base_livox = baseLinkEnuFromLivoxRotation();
+    const M3D R_livox_base = R_base_livox.transpose();
+    const V3D t_base_livox = baseLinkEnuToLivoxTranslation();
+
+    rotation = R_world_livox * R_livox_base;
+    position = state.pos - rotation * t_base_livox;
+}
+
+void computePublishedBaseLinkEnuPose(const state_ikfom & state, V3D & position, M3D & rotation)
+{
+    V3D base_position_lio_map;
+    M3D base_rotation_lio_map;
+    computeBaseLinkEnuPose(state, base_position_lio_map, base_rotation_lio_map);
+
+    if (!odom_map_initialized)
+    {
+        odom_map_origin_position = base_position_lio_map;
+        odom_map_alignment_rotation = base_rotation_lio_map.transpose();
+        odom_map_initialized = true;
+    }
+
+    rotation = odom_map_alignment_rotation * base_rotation_lio_map;
+    position = odom_map_alignment_rotation * (base_position_lio_map - odom_map_origin_position);
+}
+
+geometry_msgs::msg::Quaternion quaternionMsgFromRotation(const M3D & rotation)
+{
+    Eigen::Quaterniond q(rotation);
+    geometry_msgs::msg::Quaternion msg;
+    msg.x = q.x();
+    msg.y = q.y();
+    msg.z = q.z();
+    msg.w = q.w();
+    return msg;
+}
+
+V3D baseLinkEnuWorldVelocityFromLivoxState(
+    const state_ikfom & state,
+    const V3D & angular_velocity_body)
+{
+    V3D position;
+    M3D rotation;
+    computeBaseLinkEnuPose(state, position, rotation);
+    return state.vel - rotation * angular_velocity_body.cross(baseLinkEnuToLivoxTranslation());
 }
 
 void pointBodyToWorld_ikfom(PointType const * const pi, PointType * const po, state_ikfom &s)
@@ -218,6 +288,19 @@ void RGBpointBodyToWorld(PointType const * const pi, PointType * const po)
     po->y = p_global(1);
     po->z = p_global(2);
     po->intensity = pi->intensity;
+}
+
+void pointLioMapToPublishedMap(PointType * const p)
+{
+    if (!odom_map_initialized) return;
+
+    const V3D p_lio_map(p->x, p->y, p->z);
+    const V3D p_published_map =
+        odom_map_alignment_rotation * (p_lio_map - odom_map_origin_position);
+
+    p->x = p_published_map(0);
+    p->y = p_published_map(1);
+    p->z = p_published_map(2);
 }
 
 void RGBpointBodyLidarToIMU(PointType const * const pi, PointType * const po)
@@ -529,6 +612,7 @@ void publish_frame_world(rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::Share
         {
             RGBpointBodyToWorld(&laserCloudFullRes->points[i], \
                                 &laserCloudWorld->points[i]);
+            pointLioMapToPublishedMap(&laserCloudWorld->points[i]);
         }
 
         sensor_msgs::msg::PointCloud2 laserCloudmsg;
@@ -553,6 +637,7 @@ void publish_frame_world(rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::Share
         {
             RGBpointBodyToWorld(&feats_undistort->points[i], \
                                 &laserCloudWorld->points[i]);
+            pointLioMapToPublishedMap(&laserCloudWorld->points[i]);
         }
         *pcl_wait_save += *laserCloudWorld;
 
@@ -598,6 +683,7 @@ void publish_effect_world(rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::Shar
     {
         RGBpointBodyToWorld(&laserCloudOri->points[i], \
                             &laserCloudWorld->points[i]);
+        pointLioMapToPublishedMap(&laserCloudWorld->points[i]);
     }
     sensor_msgs::msg::PointCloud2 laserCloudFullRes3;
     pcl::toROSMsg(*laserCloudWorld, laserCloudFullRes3);
@@ -617,6 +703,7 @@ void publish_map(rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub
     {
         RGBpointBodyToWorld(&laserCloudFullRes->points[i], \
                             &laserCloudWorld->points[i]);
+        pointLioMapToPublishedMap(&laserCloudWorld->points[i]);
     }
     *pcl_wait_pub += *laserCloudWorld;
 
@@ -643,9 +730,9 @@ void save_to_pcd()
 template<typename T>
 void set_posestamp(T & out)
 {
-    out.pose.position.x = state_point.pos(0);
-    out.pose.position.y = state_point.pos(1);
-    out.pose.position.z = state_point.pos(2);
+    out.pose.position.x = odom_body_position(0);
+    out.pose.position.y = odom_body_position(1);
+    out.pose.position.z = odom_body_position(2);
     out.pose.orientation.x = geoQuat.x;
     out.pose.orientation.y = geoQuat.y;
     out.pose.orientation.z = geoQuat.z;
@@ -656,19 +743,19 @@ void set_posestamp(T & out)
 void publish_odometry(
     const rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr pubOdomAftMapped,
     std::unique_ptr<tf2_ros::TransformBroadcaster> & tf_br,
-    const V3D & linear_velocity_world)
+    const V3D & linear_velocity_body,
+    const V3D & angular_velocity_body)
 {
-    const V3D angvel = p_imu->get_angvel_last();
     odomAftMapped.header.frame_id = "map";
     odomAftMapped.child_frame_id = "blueboat/base_link_enu";
     odomAftMapped.header.stamp = get_ros_time(lidar_end_time);
     set_posestamp(odomAftMapped.pose);
-    odomAftMapped.twist.twist.linear.x = linear_velocity_world(0);
-    odomAftMapped.twist.twist.linear.y = linear_velocity_world(1);
-    odomAftMapped.twist.twist.linear.z = linear_velocity_world(2);
-    odomAftMapped.twist.twist.angular.x = angvel(0);
-    odomAftMapped.twist.twist.angular.y = angvel(1);
-    odomAftMapped.twist.twist.angular.z = angvel(2);
+    odomAftMapped.twist.twist.linear.x = linear_velocity_body(0);
+    odomAftMapped.twist.twist.linear.y = linear_velocity_body(1);
+    odomAftMapped.twist.twist.linear.z = linear_velocity_body(2);
+    odomAftMapped.twist.twist.angular.x = angular_velocity_body(0);
+    odomAftMapped.twist.twist.angular.y = angular_velocity_body(1);
+    odomAftMapped.twist.twist.angular.z = angular_velocity_body(2);
     pubOdomAftMapped->publish(odomAftMapped);
     auto P = kf.get_P();
     for (int i = 0; i < 6; i ++)
@@ -868,6 +955,9 @@ public:
         this->declare_parameter<bool>("runtime_pos_log_enable", false);
         this->declare_parameter<bool>("mapping.extrinsic_est_en", true);
         this->declare_parameter<double>("debug.pose_velocity_lpf_alpha", 0.25);
+        this->declare_parameter<vector<double>>(
+            "frames.base_link_enu_to_livox_T",
+            vector<double>({0.39, 0.36, 0.05}));
         this->declare_parameter<bool>("pcd_save.pcd_save_en", false);
         this->declare_parameter<int>("pcd_save.interval", -1);
         this->declare_parameter<vector<double>>("mapping.extrinsic_T", vector<double>());
@@ -909,6 +999,21 @@ public:
         this->get_parameter_or<int>("pcd_save.interval", pcd_save_interval, -1);
         this->get_parameter_or<vector<double>>("mapping.extrinsic_T", extrinT, vector<double>());
         this->get_parameter_or<vector<double>>("mapping.extrinsic_R", extrinR, vector<double>());
+        vector<double> base_link_enu_to_livox_T;
+        this->get_parameter_or<vector<double>>(
+            "frames.base_link_enu_to_livox_T",
+            base_link_enu_to_livox_T,
+            vector<double>({0.39, 0.36, 0.05}));
+        if (base_link_enu_to_livox_T.size() == 3)
+        {
+            base_link_enu_to_livox_translation << VEC_FROM_ARRAY(base_link_enu_to_livox_T);
+        }
+        else
+        {
+            RCLCPP_WARN(
+                this->get_logger(),
+                "frames.base_link_enu_to_livox_T must have 3 values; using default real setup.");
+        }
 
         RCLCPP_INFO(this->get_logger(), "p_pre->lidar_type %d", p_pre->lidar_type);
 
@@ -1044,9 +1149,13 @@ private:
 
     bool publish_pose_velocity_debug(const state_ikfom & state, const rclcpp::Time & stamp)
     {
+        V3D base_position;
+        M3D base_rotation;
+        computePublishedBaseLinkEnuPose(state, base_position, base_rotation);
+
         const double stamp_sec = stamp.seconds();
         if (!has_pose_velocity_debug_state_) {
-            previous_pose_velocity_pos_ = state.pos;
+            previous_pose_velocity_pos_ = base_position;
             previous_pose_velocity_stamp_ = stamp_sec;
             has_pose_velocity_debug_state_ = true;
             return false;
@@ -1056,14 +1165,14 @@ private:
         previous_pose_velocity_stamp_ = stamp_sec;
 
         if (dt <= 0.0) {
-            previous_pose_velocity_pos_ = state.pos;
+            previous_pose_velocity_pos_ = base_position;
             return false;
         }
 
-        const V3D vel_world = (state.pos - previous_pose_velocity_pos_) / dt;
-        previous_pose_velocity_pos_ = state.pos;
+        const V3D vel_world = (base_position - previous_pose_velocity_pos_) / dt;
+        previous_pose_velocity_pos_ = base_position;
 
-        const V3D vel_body = state.rot.conjugate() * vel_world;
+        const V3D vel_body = base_rotation.transpose() * vel_world;
         const double alpha = std::clamp(pose_velocity_lpf_alpha_, 0.0, 1.0);
 
         if (!has_pose_velocity_filter_state_) {
@@ -1297,23 +1406,31 @@ private:
                 get_ros_time(lidar_end_time));
             euler_cur = SO3ToEuler(state_point.rot);
             pos_lid = state_point.pos + state_point.rot * state_point.offset_T_L_I;
-            geoQuat.x = state_point.rot.coeffs()[0];
-            geoQuat.y = state_point.rot.coeffs()[1];
-            geoQuat.z = state_point.rot.coeffs()[2];
-            geoQuat.w = state_point.rot.coeffs()[3];
+            computePublishedBaseLinkEnuPose(state_point, odom_body_position, odom_body_rotation);
+            geoQuat = quaternionMsgFromRotation(odom_body_rotation);
 
             double t_update_end = omp_get_wtime();
-            const bool use_pose_velocity_for_odom =
+            const V3D odom_angular_velocity_body =
+                baseLinkEnuFromLivoxRotation() * p_imu->get_angvel_last();
+            const bool pose_velocity_available =
                 publish_pose_velocity_debug(state_point, get_ros_time(lidar_end_time));
-            const V3D odom_linear_velocity_world = use_pose_velocity_for_odom ?
-                filtered_pose_velocity_world_ :
-                state_point.vel;
+            const V3D fallback_velocity_lio_map =
+                baseLinkEnuWorldVelocityFromLivoxState(state_point, odom_angular_velocity_body);
+            const V3D fallback_velocity_world =
+                odom_map_alignment_rotation * fallback_velocity_lio_map;
+            const V3D fallback_velocity_body =
+                odom_body_rotation.transpose() * fallback_velocity_world;
+            const V3D odom_linear_velocity_body =
+                pose_velocity_available ?
+                filtered_pose_velocity_body_ :
+                fallback_velocity_body;
 
             /******* Publish odometry *******/
             publish_odometry(
                 pubOdomAftMapped_,
                 tf_broadcaster_,
-                odom_linear_velocity_world);
+                odom_linear_velocity_body,
+                odom_angular_velocity_body);
 
             /*** add the feature points to map kdtree ***/
             t3 = omp_get_wtime();
