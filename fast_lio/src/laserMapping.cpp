@@ -783,16 +783,21 @@ void publish_odometry(
     tf_br->sendTransform(trans);
 }
 
-void publish_path(rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pubPath)
+void publish_path(
+    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pubPath)
 {
     set_posestamp(msg_body_pose);
-    msg_body_pose.header.stamp = get_ros_time(lidar_end_time); // ros::Time().fromSec(lidar_end_time);
+
+    msg_body_pose.header.stamp = get_ros_time(lidar_end_time);
     msg_body_pose.header.frame_id = "map";
 
-    /*** if path is too large, the rvis will crash ***/
+    path.header.stamp = get_ros_time(lidar_end_time);
+    path.header.frame_id = "map";
+
+    /*** if path is too large, RViz will crash ***/
     static int jjj = 0;
     jjj++;
-    if (jjj % 10 == 0) 
+    if (jjj % 10 == 0)
     {
         path.poses.push_back(msg_body_pose);
         pubPath->publish(path);
@@ -1076,41 +1081,41 @@ public:
         pubLaserCloudFull_body_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("/cloud_registered_body", 20);
         pubLaserCloudEffect_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("/cloud_effected", 20);
         pubLaserCloudMap_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("/Laser_map", 20);
-        pubOdomAftMapped_ = this->create_publisher<nav_msgs::msg::Odometry>("/Odometry", 20);
+        pubOdomAftMapped_ = this->create_publisher<nav_msgs::msg::Odometry>("/catamaran/odometry", 20);
         pubPath_ = this->create_publisher<nav_msgs::msg::Path>("/path", 20);
-        pubVelPreUpdate_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/vel_pre_update", 20);
-        pubVelPostUpdate_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/vel_post_update", 20);
-        pubVelDeltaUpdate_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/vel_delta_update", 20);
-        pubVelBodyPreUpdate_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/vel_body_pre_update", 20);
-        pubVelBodyPostUpdate_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/vel_body_post_update", 20);
-        pubVelBodyDeltaUpdate_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/vel_body_delta_update", 20);
-        pubVelFromPoseWorld_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/vel_from_pose_world", 20);
-        pubVelFromPoseBody_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/vel_from_pose_body", 20);
-        pubVelFromPoseWorldFiltered_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/vel_from_pose_world_filtered", 20);
-        pubVelFromPoseBodyFiltered_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/vel_from_pose_body_filtered", 20);
-        pubVelDeltaNorm_ = this->create_publisher<std_msgs::msg::Float64>("debug/vel_delta_norm", 20);
-        pubResidualMean_ = this->create_publisher<std_msgs::msg::Float64>("debug/residual_mean", 20);
-        pubEffectivePoints_ = this->create_publisher<std_msgs::msg::Int32>("debug/effective_points", 20);
-        pubImuAccRawAvg_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/imu_acc_raw_avg", 20);
-        pubImuGyrRawAvg_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/imu_gyr_raw_avg", 20);
-        pubImuAccScaled_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/imu_acc_scaled", 20);
-        pubImuAccUnbiasedBody_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/imu_acc_unbiased_body", 20);
-        pubImuAccWorldNoGrav_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/imu_acc_world_no_grav", 20);
-        pubImuAccWorldWithGrav_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/imu_acc_world_with_grav", 20);
-        pubImuBiasAcc_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/imu_bias_acc", 20);
-        pubImuBiasGyr_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/imu_bias_gyr", 20);
-        pubImuGravity_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/imu_gravity", 20);
-        pubImuMeanAccNorm_ = this->create_publisher<std_msgs::msg::Float64>("debug/imu_mean_acc_norm", 20);
-        pubImuDt_ = this->create_publisher<std_msgs::msg::Float64>("debug/imu_dt", 20);
-        pubImuCount_ = this->create_publisher<std_msgs::msg::Int32>("debug/imu_count", 20);
-        pubSyncLidarDurationBack_ = this->create_publisher<std_msgs::msg::Float64>("debug/sync_lidar_duration_back", 20);
-        pubSyncLidarDurationMax_ = this->create_publisher<std_msgs::msg::Float64>("debug/sync_lidar_duration_max", 20);
-        pubSyncLidarBegTime_ = this->create_publisher<std_msgs::msg::Float64>("debug/sync_lidar_beg_time", 20);
-        pubSyncLidarEndTime_ = this->create_publisher<std_msgs::msg::Float64>("debug/sync_lidar_end_time", 20);
-        pubSyncImuFirstStamp_ = this->create_publisher<std_msgs::msg::Float64>("debug/sync_imu_first_stamp", 20);
-        pubSyncImuLastStamp_ = this->create_publisher<std_msgs::msg::Float64>("debug/sync_imu_last_stamp", 20);
-        pubSyncLidarPointsCount_ = this->create_publisher<std_msgs::msg::Int32>("debug/sync_lidar_points_count", 20);
-        pubSyncImuCount_ = this->create_publisher<std_msgs::msg::Int32>("debug/sync_imu_count", 20);
+        // pubVelPreUpdate_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/vel_pre_update", 20);
+        // pubVelPostUpdate_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/vel_post_update", 20);
+        // pubVelDeltaUpdate_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/vel_delta_update", 20);
+        // pubVelBodyPreUpdate_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/vel_body_pre_update", 20);
+        // pubVelBodyPostUpdate_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/vel_body_post_update", 20);
+        // pubVelBodyDeltaUpdate_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/vel_body_delta_update", 20);
+        // pubVelFromPoseWorld_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/vel_from_pose_world", 20);
+        // pubVelFromPoseBody_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/vel_from_pose_body", 20);
+        // pubVelFromPoseWorldFiltered_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/vel_from_pose_world_filtered", 20);
+        // pubVelFromPoseBodyFiltered_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/vel_from_pose_body_filtered", 20);
+        // pubVelDeltaNorm_ = this->create_publisher<std_msgs::msg::Float64>("debug/vel_delta_norm", 20);
+        // pubResidualMean_ = this->create_publisher<std_msgs::msg::Float64>("debug/residual_mean", 20);
+        // pubEffectivePoints_ = this->create_publisher<std_msgs::msg::Int32>("debug/effective_points", 20);
+        // pubImuAccRawAvg_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/imu_acc_raw_avg", 20);
+        // pubImuGyrRawAvg_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/imu_gyr_raw_avg", 20);
+        // pubImuAccScaled_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/imu_acc_scaled", 20);
+        // pubImuAccUnbiasedBody_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/imu_acc_unbiased_body", 20);
+        // pubImuAccWorldNoGrav_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/imu_acc_world_no_grav", 20);
+        // pubImuAccWorldWithGrav_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/imu_acc_world_with_grav", 20);
+        // pubImuBiasAcc_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/imu_bias_acc", 20);
+        // pubImuBiasGyr_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/imu_bias_gyr", 20);
+        // pubImuGravity_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/imu_gravity", 20);
+        // pubImuMeanAccNorm_ = this->create_publisher<std_msgs::msg::Float64>("debug/imu_mean_acc_norm", 20);
+        // pubImuDt_ = this->create_publisher<std_msgs::msg::Float64>("debug/imu_dt", 20);
+        // pubImuCount_ = this->create_publisher<std_msgs::msg::Int32>("debug/imu_count", 20);
+        // pubSyncLidarDurationBack_ = this->create_publisher<std_msgs::msg::Float64>("debug/sync_lidar_duration_back", 20);
+        // pubSyncLidarDurationMax_ = this->create_publisher<std_msgs::msg::Float64>("debug/sync_lidar_duration_max", 20);
+        // pubSyncLidarBegTime_ = this->create_publisher<std_msgs::msg::Float64>("debug/sync_lidar_beg_time", 20);
+        // pubSyncLidarEndTime_ = this->create_publisher<std_msgs::msg::Float64>("debug/sync_lidar_end_time", 20);
+        // pubSyncImuFirstStamp_ = this->create_publisher<std_msgs::msg::Float64>("debug/sync_imu_first_stamp", 20);
+        // pubSyncImuLastStamp_ = this->create_publisher<std_msgs::msg::Float64>("debug/sync_imu_last_stamp", 20);
+        // pubSyncLidarPointsCount_ = this->create_publisher<std_msgs::msg::Int32>("debug/sync_lidar_points_count", 20);
+        // pubSyncImuCount_ = this->create_publisher<std_msgs::msg::Int32>("debug/sync_imu_count", 20);
         tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
         //------------------------------------------------------------------------------------------------------
@@ -1133,27 +1138,30 @@ public:
     }
 
 private:
-    static geometry_msgs::msg::Vector3Stamped vector3StampedFromEigen(
-        const V3D & vector,
-        const rclcpp::Time & stamp,
-        const std::string & frame_id)
-    {
-        geometry_msgs::msg::Vector3Stamped msg;
-        msg.header.stamp = stamp;
-        msg.header.frame_id = frame_id;
-        msg.vector.x = vector(0);
-        msg.vector.y = vector(1);
-        msg.vector.z = vector(2);
-        return msg;
-    }
+    // static geometry_msgs::msg::Vector3Stamped vector3StampedFromEigen(
+    //     const V3D & vector,
+    //     const rclcpp::Time & stamp,
+    //     const std::string & frame_id)
+    // {
+    //     geometry_msgs::msg::Vector3Stamped msg;
+    //     msg.header.stamp = stamp;
+    //     msg.header.frame_id = frame_id;
+    //     msg.vector.x = vector(0);
+    //     msg.vector.y = vector(1);
+    //     msg.vector.z = vector(2);
+    //     return msg;
+    // }
 
-    bool publish_pose_velocity_debug(const state_ikfom & state, const rclcpp::Time & stamp)
+    bool update_pose_velocity_estimate(
+        const state_ikfom & state,
+        const rclcpp::Time & stamp)
     {
         V3D base_position;
         M3D base_rotation;
         computePublishedBaseLinkEnuPose(state, base_position, base_rotation);
 
         const double stamp_sec = stamp.seconds();
+
         if (!has_pose_velocity_debug_state_) {
             previous_pose_velocity_pos_ = base_position;
             previous_pose_velocity_stamp_ = stamp_sec;
@@ -1184,123 +1192,114 @@ private:
             filtered_pose_velocity_body_ += alpha * (vel_body - filtered_pose_velocity_body_);
         }
 
-        pubVelFromPoseWorld_->publish(
-            vector3StampedFromEigen(vel_world, stamp, "map"));
-        pubVelFromPoseBody_->publish(
-            vector3StampedFromEigen(vel_body, stamp, "blueboat/base_link_enu"));
-        pubVelFromPoseWorldFiltered_->publish(
-            vector3StampedFromEigen(filtered_pose_velocity_world_, stamp, "map"));
-        pubVelFromPoseBodyFiltered_->publish(
-            vector3StampedFromEigen(filtered_pose_velocity_body_, stamp, "blueboat/base_link_enu"));
-
         return true;
     }
 
-    void publish_velocity_update_debug(
-        const V3D & vel_pre_update,
-        const V3D & vel_post_update,
-        const state_ikfom & state_pre_update,
-        const state_ikfom & state_post_update,
-        const rclcpp::Time & stamp)
-    {
-        const V3D vel_delta = vel_post_update - vel_pre_update;
-        const V3D vel_body_pre_update =
-            state_pre_update.rot.conjugate() * vel_pre_update;
-        const V3D vel_body_post_update =
-            state_post_update.rot.conjugate() * vel_post_update;
-        const V3D vel_body_delta = vel_body_post_update - vel_body_pre_update;
+    // void publish_velocity_update_debug(
+    //     const V3D & vel_pre_update,
+    //     const V3D & vel_post_update,
+    //     const state_ikfom & state_pre_update,
+    //     const state_ikfom & state_post_update,
+    //     const rclcpp::Time & stamp)
+    // {
+    //     const V3D vel_delta = vel_post_update - vel_pre_update;
+    //     const V3D vel_body_pre_update =
+    //         state_pre_update.rot.conjugate() * vel_pre_update;
+    //     const V3D vel_body_post_update =
+    //         state_post_update.rot.conjugate() * vel_post_update;
+    //     const V3D vel_body_delta = vel_body_post_update - vel_body_pre_update;
 
-        pubVelPreUpdate_->publish(
-            vector3StampedFromEigen(vel_pre_update, stamp, "map"));
-        pubVelPostUpdate_->publish(
-            vector3StampedFromEigen(vel_post_update, stamp, "map"));
-        pubVelDeltaUpdate_->publish(
-            vector3StampedFromEigen(vel_delta, stamp, "map"));
-        pubVelBodyPreUpdate_->publish(
-            vector3StampedFromEigen(vel_body_pre_update, stamp, "blueboat/base_link_enu"));
-        pubVelBodyPostUpdate_->publish(
-            vector3StampedFromEigen(vel_body_post_update, stamp, "blueboat/base_link_enu"));
-        pubVelBodyDeltaUpdate_->publish(
-            vector3StampedFromEigen(vel_body_delta, stamp, "blueboat/base_link_enu"));
+    //     pubVelPreUpdate_->publish(
+    //         vector3StampedFromEigen(vel_pre_update, stamp, "map"));
+    //     pubVelPostUpdate_->publish(
+    //         vector3StampedFromEigen(vel_post_update, stamp, "map"));
+    //     pubVelDeltaUpdate_->publish(
+    //         vector3StampedFromEigen(vel_delta, stamp, "map"));
+    //     pubVelBodyPreUpdate_->publish(
+    //         vector3StampedFromEigen(vel_body_pre_update, stamp, "blueboat/base_link_enu"));
+    //     pubVelBodyPostUpdate_->publish(
+    //         vector3StampedFromEigen(vel_body_post_update, stamp, "blueboat/base_link_enu"));
+    //     pubVelBodyDeltaUpdate_->publish(
+    //         vector3StampedFromEigen(vel_body_delta, stamp, "blueboat/base_link_enu"));
 
-        std_msgs::msg::Float64 delta_norm_msg;
-        delta_norm_msg.data = vel_delta.norm();
-        pubVelDeltaNorm_->publish(delta_norm_msg);
+    //     std_msgs::msg::Float64 delta_norm_msg;
+    //     delta_norm_msg.data = vel_delta.norm();
+    //     pubVelDeltaNorm_->publish(delta_norm_msg);
 
-        std_msgs::msg::Float64 residual_msg;
-        residual_msg.data = res_mean_last;
-        pubResidualMean_->publish(residual_msg);
+    //     std_msgs::msg::Float64 residual_msg;
+    //     residual_msg.data = res_mean_last;
+    //     pubResidualMean_->publish(residual_msg);
 
-        std_msgs::msg::Int32 effective_points_msg;
-        effective_points_msg.data = effct_feat_num;
-        pubEffectivePoints_->publish(effective_points_msg);
-    }
+    //     std_msgs::msg::Int32 effective_points_msg;
+    //     effective_points_msg.data = effct_feat_num;
+    //     pubEffectivePoints_->publish(effective_points_msg);
+    // }
 
-    void publish_imu_debug(const rclcpp::Time & stamp)
-    {
-        pubImuAccRawAvg_->publish(
-            vector3StampedFromEigen(p_imu->get_debug_acc_raw_avg_last(), stamp, "blueboat/imu_link"));
-        pubImuGyrRawAvg_->publish(
-            vector3StampedFromEigen(p_imu->get_debug_gyr_raw_avg_last(), stamp, "blueboat/imu_link"));
-        pubImuAccScaled_->publish(
-            vector3StampedFromEigen(p_imu->get_debug_acc_scaled_last(), stamp, "blueboat/imu_link"));
-        pubImuAccUnbiasedBody_->publish(
-            vector3StampedFromEigen(p_imu->get_debug_acc_unbiased_body_last(), stamp, "blueboat/imu_link"));
-        pubImuAccWorldNoGrav_->publish(
-            vector3StampedFromEigen(p_imu->get_debug_acc_world_no_grav_last(), stamp, "map"));
-        pubImuAccWorldWithGrav_->publish(
-            vector3StampedFromEigen(p_imu->get_debug_acc_world_with_grav_last(), stamp, "map"));
-        pubImuBiasAcc_->publish(
-            vector3StampedFromEigen(p_imu->get_debug_bias_acc_last(), stamp, "blueboat/imu_link"));
-        pubImuBiasGyr_->publish(
-            vector3StampedFromEigen(p_imu->get_debug_bias_gyr_last(), stamp, "blueboat/imu_link"));
-        pubImuGravity_->publish(
-            vector3StampedFromEigen(p_imu->get_debug_gravity_last(), stamp, "map"));
+    // void publish_imu_debug(const rclcpp::Time & stamp)
+    // {
+    //     pubImuAccRawAvg_->publish(
+    //         vector3StampedFromEigen(p_imu->get_debug_acc_raw_avg_last(), stamp, "blueboat/imu_link"));
+    //     pubImuGyrRawAvg_->publish(
+    //         vector3StampedFromEigen(p_imu->get_debug_gyr_raw_avg_last(), stamp, "blueboat/imu_link"));
+    //     pubImuAccScaled_->publish(
+    //         vector3StampedFromEigen(p_imu->get_debug_acc_scaled_last(), stamp, "blueboat/imu_link"));
+    //     pubImuAccUnbiasedBody_->publish(
+    //         vector3StampedFromEigen(p_imu->get_debug_acc_unbiased_body_last(), stamp, "blueboat/imu_link"));
+    //     pubImuAccWorldNoGrav_->publish(
+    //         vector3StampedFromEigen(p_imu->get_debug_acc_world_no_grav_last(), stamp, "map"));
+    //     pubImuAccWorldWithGrav_->publish(
+    //         vector3StampedFromEigen(p_imu->get_debug_acc_world_with_grav_last(), stamp, "map"));
+    //     pubImuBiasAcc_->publish(
+    //         vector3StampedFromEigen(p_imu->get_debug_bias_acc_last(), stamp, "blueboat/imu_link"));
+    //     pubImuBiasGyr_->publish(
+    //         vector3StampedFromEigen(p_imu->get_debug_bias_gyr_last(), stamp, "blueboat/imu_link"));
+    //     pubImuGravity_->publish(
+    //         vector3StampedFromEigen(p_imu->get_debug_gravity_last(), stamp, "map"));
 
-        std_msgs::msg::Float64 mean_acc_norm_msg;
-        mean_acc_norm_msg.data = p_imu->get_debug_mean_acc_norm();
-        pubImuMeanAccNorm_->publish(mean_acc_norm_msg);
+    //     std_msgs::msg::Float64 mean_acc_norm_msg;
+    //     mean_acc_norm_msg.data = p_imu->get_debug_mean_acc_norm();
+    //     pubImuMeanAccNorm_->publish(mean_acc_norm_msg);
 
-        std_msgs::msg::Float64 dt_msg;
-        dt_msg.data = p_imu->get_debug_last_dt();
-        pubImuDt_->publish(dt_msg);
+    //     std_msgs::msg::Float64 dt_msg;
+    //     dt_msg.data = p_imu->get_debug_last_dt();
+    //     pubImuDt_->publish(dt_msg);
 
-        std_msgs::msg::Int32 imu_count_msg;
-        imu_count_msg.data = p_imu->get_debug_imu_count();
-        pubImuCount_->publish(imu_count_msg);
-    }
+    //     std_msgs::msg::Int32 imu_count_msg;
+    //     imu_count_msg.data = p_imu->get_debug_imu_count();
+    //     pubImuCount_->publish(imu_count_msg);
+    // }
 
-    static std_msgs::msg::Float64 float64Msg(double value)
-    {
-        std_msgs::msg::Float64 msg;
-        msg.data = value;
-        return msg;
-    }
+    // static std_msgs::msg::Float64 float64Msg(double value)
+    // {
+    //     std_msgs::msg::Float64 msg;
+    //     msg.data = value;
+    //     return msg;
+    // }
 
-    static std_msgs::msg::Int32 int32Msg(int value)
-    {
-        std_msgs::msg::Int32 msg;
-        msg.data = value;
-        return msg;
-    }
+    // static std_msgs::msg::Int32 int32Msg(int value)
+    // {
+    //     std_msgs::msg::Int32 msg;
+    //     msg.data = value;
+    //     return msg;
+    // }
 
-    void publish_sync_debug()
-    {
-        pubSyncLidarDurationBack_->publish(float64Msg(debug_lidar_duration_back));
-        pubSyncLidarDurationMax_->publish(float64Msg(debug_lidar_duration_max));
-        pubSyncLidarBegTime_->publish(float64Msg(debug_lidar_beg_time));
-        pubSyncLidarEndTime_->publish(float64Msg(debug_lidar_end_time));
-        pubSyncImuFirstStamp_->publish(float64Msg(debug_imu_first_stamp));
-        pubSyncImuLastStamp_->publish(float64Msg(debug_imu_last_stamp));
-        pubSyncLidarPointsCount_->publish(int32Msg(debug_lidar_points_count));
-        pubSyncImuCount_->publish(int32Msg(debug_sync_imu_count));
-    }
+    // void publish_sync_debug()
+    // {
+    //     pubSyncLidarDurationBack_->publish(float64Msg(debug_lidar_duration_back));
+    //     pubSyncLidarDurationMax_->publish(float64Msg(debug_lidar_duration_max));
+    //     pubSyncLidarBegTime_->publish(float64Msg(debug_lidar_beg_time));
+    //     pubSyncLidarEndTime_->publish(float64Msg(debug_lidar_end_time));
+    //     pubSyncImuFirstStamp_->publish(float64Msg(debug_imu_first_stamp));
+    //     pubSyncImuLastStamp_->publish(float64Msg(debug_imu_last_stamp));
+    //     pubSyncLidarPointsCount_->publish(int32Msg(debug_lidar_points_count));
+    //     pubSyncImuCount_->publish(int32Msg(debug_sync_imu_count));
+    // }
 
     void timer_callback()
     {
         if(sync_packages(Measures))
         {
-            publish_sync_debug();
+            // publish_sync_debug();
             if (flg_first_scan)
             {
                 first_lidar_time = Measures.lidar_beg_time;
@@ -1319,7 +1318,7 @@ private:
             t0 = omp_get_wtime();
 
             p_imu->Process(Measures, kf, feats_undistort);
-            publish_imu_debug(get_ros_time(lidar_end_time));
+            // publish_imu_debug(get_ros_time(lidar_end_time));
             state_point = kf.get_x();
             pos_lid = state_point.pos + state_point.rot * state_point.offset_T_L_I;
 
@@ -1398,12 +1397,12 @@ private:
             state_point = kf.get_x();
             const state_ikfom state_post_update = state_point;
             const V3D vel_post_update = state_point.vel;
-            publish_velocity_update_debug(
-                vel_pre_update,
-                vel_post_update,
-                state_pre_update,
-                state_post_update,
-                get_ros_time(lidar_end_time));
+            // publish_velocity_update_debug(
+            //     vel_pre_update,
+            //     vel_post_update,
+            //     state_pre_update,
+            //     state_post_update,
+            //     get_ros_time(lidar_end_time));
             euler_cur = SO3ToEuler(state_point.rot);
             pos_lid = state_point.pos + state_point.rot * state_point.offset_T_L_I;
             computePublishedBaseLinkEnuPose(state_point, odom_body_position, odom_body_rotation);
@@ -1413,7 +1412,7 @@ private:
             const V3D odom_angular_velocity_body =
                 baseLinkEnuFromLivoxRotation() * p_imu->get_angvel_last();
             const bool pose_velocity_available =
-                publish_pose_velocity_debug(state_point, get_ros_time(lidar_end_time));
+                update_pose_velocity_estimate(state_point, get_ros_time(lidar_end_time));
             const V3D fallback_velocity_lio_map =
                 baseLinkEnuWorldVelocityFromLivoxState(state_point, odom_angular_velocity_body);
             const V3D fallback_velocity_world =
@@ -1504,39 +1503,39 @@ private:
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pubLaserCloudMap_;
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr pubOdomAftMapped_;
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pubPath_;
-    rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubVelPreUpdate_;
-    rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubVelPostUpdate_;
-    rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubVelDeltaUpdate_;
-    rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubVelBodyPreUpdate_;
-    rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubVelBodyPostUpdate_;
-    rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubVelBodyDeltaUpdate_;
-    rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubVelFromPoseWorld_;
-    rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubVelFromPoseBody_;
-    rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubVelFromPoseWorldFiltered_;
-    rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubVelFromPoseBodyFiltered_;
-    rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pubVelDeltaNorm_;
-    rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pubResidualMean_;
-    rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr pubEffectivePoints_;
-    rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubImuAccRawAvg_;
-    rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubImuGyrRawAvg_;
-    rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubImuAccScaled_;
-    rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubImuAccUnbiasedBody_;
-    rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubImuAccWorldNoGrav_;
-    rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubImuAccWorldWithGrav_;
-    rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubImuBiasAcc_;
-    rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubImuBiasGyr_;
-    rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubImuGravity_;
-    rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pubImuMeanAccNorm_;
-    rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pubImuDt_;
-    rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr pubImuCount_;
-    rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pubSyncLidarDurationBack_;
-    rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pubSyncLidarDurationMax_;
-    rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pubSyncLidarBegTime_;
-    rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pubSyncLidarEndTime_;
-    rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pubSyncImuFirstStamp_;
-    rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pubSyncImuLastStamp_;
-    rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr pubSyncLidarPointsCount_;
-    rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr pubSyncImuCount_;
+    // rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubVelPreUpdate_;
+    // rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubVelPostUpdate_;
+    // rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubVelDeltaUpdate_;
+    // rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubVelBodyPreUpdate_;
+    // rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubVelBodyPostUpdate_;
+    // rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubVelBodyDeltaUpdate_;
+    // rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubVelFromPoseWorld_;
+    // rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubVelFromPoseBody_;
+    // rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubVelFromPoseWorldFiltered_;
+    // rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubVelFromPoseBodyFiltered_;
+    // rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pubVelDeltaNorm_;
+    // rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pubResidualMean_;
+    // rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr pubEffectivePoints_;
+    // rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubImuAccRawAvg_;
+    // rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubImuGyrRawAvg_;
+    // rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubImuAccScaled_;
+    // rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubImuAccUnbiasedBody_;
+    // rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubImuAccWorldNoGrav_;
+    // rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubImuAccWorldWithGrav_;
+    // rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubImuBiasAcc_;
+    // rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubImuBiasGyr_;
+    // rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubImuGravity_;
+    // rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pubImuMeanAccNorm_;
+    // rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pubImuDt_;
+    // rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr pubImuCount_;
+    // rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pubSyncLidarDurationBack_;
+    // rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pubSyncLidarDurationMax_;
+    // rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pubSyncLidarBegTime_;
+    // rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pubSyncLidarEndTime_;
+    // rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pubSyncImuFirstStamp_;
+    // rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pubSyncImuLastStamp_;
+    // rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr pubSyncLidarPointsCount_;
+    // rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr pubSyncImuCount_;
     rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr sub_imu_;
     rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sub_pcl_pc_;
     rclcpp::Subscription<livox_ros_driver2::msg::CustomMsg>::SharedPtr sub_pcl_livox_;

@@ -1,23 +1,6 @@
 cmake_minimum_required(VERSION 3.8)
 project(fast_lio)
 
-# Detect Raspberry-like architectures and skip build there
-set(TARGET_RASPBERRY FALSE)
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "armv7|aarch64")
-  set(TARGET_RASPBERRY TRUE)
-endif()
-
-if(TARGET_RASPBERRY)
-  message(WARNING
-    "Package '${PROJECT_NAME}' will NOT be compiled because a Raspberry/ARM "
-    "architecture was detected "
-    "(CMAKE_SYSTEM_PROCESSOR='${CMAKE_SYSTEM_PROCESSOR}')."
-  )
-  find_package(ament_cmake REQUIRED)
-  ament_package()
-  return()
-endif()
-
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()

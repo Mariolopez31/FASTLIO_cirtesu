@@ -47,18 +47,18 @@ class ImuProcess
   void set_gyr_bias_cov(const V3D &b_g);
   void set_acc_bias_cov(const V3D &b_a);
   const V3D &get_angvel_last() const;
-  const V3D &get_debug_acc_raw_avg_last() const;
-  const V3D &get_debug_gyr_raw_avg_last() const;
-  const V3D &get_debug_acc_scaled_last() const;
-  const V3D &get_debug_acc_unbiased_body_last() const;
-  const V3D &get_debug_acc_world_no_grav_last() const;
-  const V3D &get_debug_acc_world_with_grav_last() const;
-  const V3D &get_debug_bias_acc_last() const;
-  const V3D &get_debug_bias_gyr_last() const;
-  const V3D &get_debug_gravity_last() const;
-  double get_debug_mean_acc_norm() const;
-  double get_debug_last_dt() const;
-  int get_debug_imu_count() const;
+  // const V3D &get_debug_acc_raw_avg_last() const;
+  // const V3D &get_debug_gyr_raw_avg_last() const;
+  // const V3D &get_debug_acc_scaled_last() const;
+  // const V3D &get_debug_acc_unbiased_body_last() const;
+  // const V3D &get_debug_acc_world_no_grav_last() const;
+  // const V3D &get_debug_acc_world_with_grav_last() const;
+  // const V3D &get_debug_bias_acc_last() const;
+  // const V3D &get_debug_bias_gyr_last() const;
+  // const V3D &get_debug_gravity_last() const;
+  // double get_debug_mean_acc_norm() const;
+  // double get_debug_last_dt() const;
+  // int get_debug_imu_count() const;
   Eigen::Matrix<double, 12, 12> Q;
   void Process(const MeasureGroup &meas,  esekfom::esekf<state_ikfom, 12, input_ikfom> &kf_state, PointCloudXYZI::Ptr pcl_un_);
 
@@ -87,18 +87,18 @@ class ImuProcess
   V3D mean_gyr;
   V3D angvel_last;
   V3D acc_s_last;
-  V3D debug_acc_raw_avg_last;
-  V3D debug_gyr_raw_avg_last;
-  V3D debug_acc_scaled_last;
-  V3D debug_acc_unbiased_body_last;
-  V3D debug_acc_world_no_grav_last;
-  V3D debug_acc_world_with_grav_last;
-  V3D debug_bias_acc_last;
-  V3D debug_bias_gyr_last;
-  V3D debug_gravity_last;
-  double debug_mean_acc_norm;
-  double debug_last_dt;
-  int debug_imu_count;
+  // V3D debug_acc_raw_avg_last;
+  // V3D debug_gyr_raw_avg_last;
+  // V3D debug_acc_scaled_last;
+  // V3D debug_acc_unbiased_body_last;
+  // V3D debug_acc_world_no_grav_last;
+  // V3D debug_acc_world_with_grav_last;
+  // V3D debug_bias_acc_last;
+  // V3D debug_bias_gyr_last;
+  // V3D debug_gravity_last;
+  // double debug_mean_acc_norm;
+  // double debug_last_dt;
+  // int debug_imu_count;
   double start_timestamp_;
   double last_lidar_end_time_;
   int    init_iter_num = 1;
@@ -119,18 +119,18 @@ ImuProcess::ImuProcess()
   mean_gyr      = V3D(0, 0, 0);
   angvel_last     = Zero3d;
   acc_s_last       = Zero3d;
-  debug_acc_raw_avg_last = Zero3d;
-  debug_gyr_raw_avg_last = Zero3d;
-  debug_acc_scaled_last = Zero3d;
-  debug_acc_unbiased_body_last = Zero3d;
-  debug_acc_world_no_grav_last = Zero3d;
-  debug_acc_world_with_grav_last = Zero3d;
-  debug_bias_acc_last = Zero3d;
-  debug_bias_gyr_last = Zero3d;
-  debug_gravity_last = Zero3d;
-  debug_mean_acc_norm = 1.0;
-  debug_last_dt = 0.0;
-  debug_imu_count = 0;
+  // debug_acc_raw_avg_last = Zero3d;
+  // debug_gyr_raw_avg_last = Zero3d;
+  // debug_acc_scaled_last = Zero3d;
+  // debug_acc_unbiased_body_last = Zero3d;
+  // debug_acc_world_no_grav_last = Zero3d;
+  // debug_acc_world_with_grav_last = Zero3d;
+  // debug_bias_acc_last = Zero3d;
+  // debug_bias_gyr_last = Zero3d;
+  // debug_gravity_last = Zero3d;
+  // debug_mean_acc_norm = 1.0;
+  // debug_last_dt = 0.0;
+  // debug_imu_count = 0;
   Lidar_T_wrt_IMU = Zero3d;
   Lidar_R_wrt_IMU = Eye3d;
   last_imu_.reset(new sensor_msgs::msg::Imu());
@@ -145,18 +145,18 @@ void ImuProcess::Reset()
   mean_gyr      = V3D(0, 0, 0);
   angvel_last       = Zero3d;
   acc_s_last         = Zero3d;
-  debug_acc_raw_avg_last = Zero3d;
-  debug_gyr_raw_avg_last = Zero3d;
-  debug_acc_scaled_last = Zero3d;
-  debug_acc_unbiased_body_last = Zero3d;
-  debug_acc_world_no_grav_last = Zero3d;
-  debug_acc_world_with_grav_last = Zero3d;
-  debug_bias_acc_last = Zero3d;
-  debug_bias_gyr_last = Zero3d;
-  debug_gravity_last = Zero3d;
-  debug_mean_acc_norm = 1.0;
-  debug_last_dt = 0.0;
-  debug_imu_count = 0;
+  // debug_acc_raw_avg_last = Zero3d;
+  // debug_gyr_raw_avg_last = Zero3d;
+  // debug_acc_scaled_last = Zero3d;
+  // debug_acc_unbiased_body_last = Zero3d;
+  // debug_acc_world_no_grav_last = Zero3d;
+  // debug_acc_world_with_grav_last = Zero3d;
+  // debug_bias_acc_last = Zero3d;
+  // debug_bias_gyr_last = Zero3d;
+  // debug_gravity_last = Zero3d;
+  // debug_mean_acc_norm = 1.0;
+  // debug_last_dt = 0.0;
+  // debug_imu_count = 0;
   imu_need_init_    = true;
   start_timestamp_  = -1;
   init_iter_num     = 1;
@@ -209,65 +209,65 @@ const V3D &ImuProcess::get_angvel_last() const
   return angvel_last;
 }
 
-const V3D &ImuProcess::get_debug_acc_raw_avg_last() const
-{
-  return debug_acc_raw_avg_last;
-}
+// const V3D &ImuProcess::get_debug_acc_raw_avg_last() const
+// {
+//   return debug_acc_raw_avg_last;
+// }
 
-const V3D &ImuProcess::get_debug_gyr_raw_avg_last() const
-{
-  return debug_gyr_raw_avg_last;
-}
+// const V3D &ImuProcess::get_debug_gyr_raw_avg_last() const
+// {
+//   return debug_gyr_raw_avg_last;
+// }
 
-const V3D &ImuProcess::get_debug_acc_scaled_last() const
-{
-  return debug_acc_scaled_last;
-}
+// const V3D &ImuProcess::get_debug_acc_scaled_last() const
+// {
+//   return debug_acc_scaled_last;
+// }
 
-const V3D &ImuProcess::get_debug_acc_unbiased_body_last() const
-{
-  return debug_acc_unbiased_body_last;
-}
+// const V3D &ImuProcess::get_debug_acc_unbiased_body_last() const
+// {
+//   return debug_acc_unbiased_body_last;
+// }
 
-const V3D &ImuProcess::get_debug_acc_world_no_grav_last() const
-{
-  return debug_acc_world_no_grav_last;
-}
+// const V3D &ImuProcess::get_debug_acc_world_no_grav_last() const
+// {
+//   return debug_acc_world_no_grav_last;
+// }
 
-const V3D &ImuProcess::get_debug_acc_world_with_grav_last() const
-{
-  return debug_acc_world_with_grav_last;
-}
+// const V3D &ImuProcess::get_debug_acc_world_with_grav_last() const
+// {
+//   return debug_acc_world_with_grav_last;
+// }
 
-const V3D &ImuProcess::get_debug_bias_acc_last() const
-{
-  return debug_bias_acc_last;
-}
+// const V3D &ImuProcess::get_debug_bias_acc_last() const
+// {
+//   return debug_bias_acc_last;
+// }
 
-const V3D &ImuProcess::get_debug_bias_gyr_last() const
-{
-  return debug_bias_gyr_last;
-}
+// const V3D &ImuProcess::get_debug_bias_gyr_last() const
+// {
+//   return debug_bias_gyr_last;
+// }
 
-const V3D &ImuProcess::get_debug_gravity_last() const
-{
-  return debug_gravity_last;
-}
+// const V3D &ImuProcess::get_debug_gravity_last() const
+// {
+//   return debug_gravity_last;
+// }
 
-double ImuProcess::get_debug_mean_acc_norm() const
-{
-  return debug_mean_acc_norm;
-}
+// double ImuProcess::get_debug_mean_acc_norm() const
+// {
+//   return debug_mean_acc_norm;
+// }
 
-double ImuProcess::get_debug_last_dt() const
-{
-  return debug_last_dt;
-}
+// double ImuProcess::get_debug_last_dt() const
+// {
+//   return debug_last_dt;
+// }
 
-int ImuProcess::get_debug_imu_count() const
-{
-  return debug_imu_count;
-}
+// int ImuProcess::get_debug_imu_count() const
+// {
+//   return debug_imu_count;
+// }
 
 void ImuProcess::IMU_init(const MeasureGroup &meas, esekfom::esekf<state_ikfom, 12, input_ikfom> &kf_state, int &N)
 {
@@ -305,10 +305,10 @@ void ImuProcess::IMU_init(const MeasureGroup &meas, esekfom::esekf<state_ikfom, 
 
     N ++;
   }
-  debug_acc_raw_avg_last = mean_acc;
-  debug_gyr_raw_avg_last = mean_gyr;
-  debug_mean_acc_norm = mean_acc.norm();
-  debug_imu_count = static_cast<int>(meas.imu.size());
+  // debug_acc_raw_avg_last = mean_acc;
+  // debug_gyr_raw_avg_last = mean_gyr;
+  // debug_mean_acc_norm = mean_acc.norm();
+  // debug_imu_count = static_cast<int>(meas.imu.size());
   state_ikfom init_state = kf_state.get_x();
   init_state.grav = S2(- mean_acc / mean_acc.norm() * G_m_s2);
   
@@ -334,7 +334,7 @@ void ImuProcess::UndistortPcl(const MeasureGroup &meas, esekfom::esekf<state_ikf
 {
   /*** add the imu of the last frame-tail to the of current frame-head ***/
   auto v_imu = meas.imu;
-  debug_imu_count = static_cast<int>(meas.imu.size());
+  // debug_imu_count = static_cast<int>(meas.imu.size());
   v_imu.push_front(last_imu_);
   const double &imu_beg_time = rclcpp::Time(v_imu.front()->header.stamp).seconds();
   const double &imu_end_time = rclcpp::Time(v_imu.back()->header.stamp).seconds();
@@ -375,14 +375,14 @@ void ImuProcess::UndistortPcl(const MeasureGroup &meas, esekfom::esekf<state_ikf
     acc_avr   <<0.5 * (head->linear_acceleration.x + tail->linear_acceleration.x),
                 0.5 * (head->linear_acceleration.y + tail->linear_acceleration.y),
                 0.5 * (head->linear_acceleration.z + tail->linear_acceleration.z);
-    debug_acc_raw_avg_last = acc_avr;
-    debug_gyr_raw_avg_last = angvel_avr;
+    // debug_acc_raw_avg_last = acc_avr;
+    // debug_gyr_raw_avg_last = angvel_avr;
 
     // fout_imu << setw(10) << head->header.stamp.toSec() - first_lidar_time << " " << angvel_avr.transpose() << " " << acc_avr.transpose() << endl;
 
     acc_avr     = acc_avr * G_m_s2 / mean_acc.norm(); // - state_inout.ba;
-    debug_acc_scaled_last = acc_avr;
-    debug_mean_acc_norm = mean_acc.norm();
+    // debug_acc_scaled_last = acc_avr;
+    // debug_mean_acc_norm = mean_acc.norm();
 
     if(head_stamp < last_lidar_end_time_)
     {
@@ -393,7 +393,7 @@ void ImuProcess::UndistortPcl(const MeasureGroup &meas, esekfom::esekf<state_ikf
     {
       dt = tail_stamp - head_stamp;
     }
-    debug_last_dt = dt;
+    // debug_last_dt = dt;
     
     in.acc = acc_avr;
     in.gyro = angvel_avr;
@@ -406,17 +406,20 @@ void ImuProcess::UndistortPcl(const MeasureGroup &meas, esekfom::esekf<state_ikf
     /* save the poses at each IMU measurements */
     imu_state = kf_state.get_x();
     angvel_last = angvel_avr - imu_state.bg;
-    debug_bias_gyr_last = imu_state.bg;
-    debug_bias_acc_last = imu_state.ba;
-    debug_gravity_last = imu_state.grav;
-    debug_acc_unbiased_body_last = acc_avr - imu_state.ba;
-    debug_acc_world_no_grav_last = imu_state.rot * debug_acc_unbiased_body_last;
-    acc_s_last  = debug_acc_world_no_grav_last;
+    // debug_bias_gyr_last = imu_state.bg;
+    // debug_bias_acc_last = imu_state.ba;
+    // debug_gravity_last = imu_state.grav;
+    // debug_acc_unbiased_body_last = acc_avr - imu_state.ba;
+    // debug_acc_world_no_grav_last = imu_state.rot * debug_acc_unbiased_body_last;
+    // acc_s_last  = debug_acc_world_no_grav_last;
+    const V3D acc_unbiased_body = acc_avr - imu_state.ba;
+    const V3D acc_world_no_grav = imu_state.rot * acc_unbiased_body;
+    acc_s_last = acc_world_no_grav;
     for(int i=0; i<3; i++)
     {
       acc_s_last[i] += imu_state.grav[i];
     }
-    debug_acc_world_with_grav_last = acc_s_last;
+    // debug_acc_world_with_grav_last = acc_s_last;
     double &&offs_t = tail_stamp - pcl_beg_time;
     IMUpose.push_back(set_pose6d(offs_t, acc_s_last, angvel_last, imu_state.vel, imu_state.pos, imu_state.rot.toRotationMatrix()));
   }
