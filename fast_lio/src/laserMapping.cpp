@@ -619,7 +619,7 @@ void publish_frame_world(rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::Share
         pcl::toROSMsg(*laserCloudWorld, laserCloudmsg);
         // laserCloudmsg.header.stamp = ros::Time().fromSec(lidar_end_time);
         laserCloudmsg.header.stamp = get_ros_time(lidar_end_time);
-        laserCloudmsg.header.frame_id = "map";
+        laserCloudmsg.header.frame_id = "blueboat/map";
         pubLaserCloudFull->publish(laserCloudmsg);
         publish_count -= PUBFRAME_PERIOD;
     }
@@ -688,7 +688,7 @@ void publish_effect_world(rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::Shar
     sensor_msgs::msg::PointCloud2 laserCloudFullRes3;
     pcl::toROSMsg(*laserCloudWorld, laserCloudFullRes3);
     laserCloudFullRes3.header.stamp = get_ros_time(lidar_end_time);
-    laserCloudFullRes3.header.frame_id = "map";
+    laserCloudFullRes3.header.frame_id = "blueboat/map";
     pubLaserCloudEffect->publish(laserCloudFullRes3);
 }
 
@@ -711,13 +711,13 @@ void publish_map(rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub
     pcl::toROSMsg(*pcl_wait_pub, laserCloudmsg);
     // laserCloudmsg.header.stamp = ros::Time().fromSec(lidar_end_time);
     laserCloudmsg.header.stamp = get_ros_time(lidar_end_time);
-    laserCloudmsg.header.frame_id = "map";
+    laserCloudmsg.header.frame_id = "blueboat/map";
     pubLaserCloudMap->publish(laserCloudmsg);
 
     // sensor_msgs::msg::PointCloud2 laserCloudMap;
     // pcl::toROSMsg(*featsFromMap, laserCloudMap);
     // laserCloudMap.header.stamp = get_ros_time(lidar_end_time);
-    // laserCloudMap.header.frame_id = "map";
+    // laserCloudMap.header.frame_id = "blueboat/map";
     // pubLaserCloudMap->publish(laserCloudMap);
 }
 
@@ -746,7 +746,7 @@ void publish_odometry(
     const V3D & linear_velocity_body,
     const V3D & angular_velocity_body)
 {
-    odomAftMapped.header.frame_id = "map";
+    odomAftMapped.header.frame_id = "blueboat/map";
     odomAftMapped.child_frame_id = "blueboat/base_link_enu";
     odomAftMapped.header.stamp = get_ros_time(lidar_end_time);
     set_posestamp(odomAftMapped.pose);
@@ -770,7 +770,7 @@ void publish_odometry(
     }
 
     geometry_msgs::msg::TransformStamped trans;
-    trans.header.frame_id = "map";
+    trans.header.frame_id = "blueboat/map";
     trans.header.stamp = odomAftMapped.header.stamp;
     trans.child_frame_id = "blueboat/base_link_enu";
     trans.transform.translation.x = odomAftMapped.pose.pose.position.x;
@@ -789,10 +789,10 @@ void publish_path(
     set_posestamp(msg_body_pose);
 
     msg_body_pose.header.stamp = get_ros_time(lidar_end_time);
-    msg_body_pose.header.frame_id = "map";
+    msg_body_pose.header.frame_id = "blueboat/map";
 
     path.header.stamp = get_ros_time(lidar_end_time);
-    path.header.frame_id = "map";
+    path.header.frame_id = "blueboat/map";
 
     /*** if path is too large, RViz will crash ***/
     static int jjj = 0;
@@ -1023,7 +1023,7 @@ public:
         RCLCPP_INFO(this->get_logger(), "p_pre->lidar_type %d", p_pre->lidar_type);
 
         path.header.stamp = this->get_clock()->now();
-        path.header.frame_id ="map";
+        path.header.frame_id ="blueboat/map";
 
         // /*** variables definition ***/
         // int effect_feat_num = 0, frame_num = 0;
@@ -1081,7 +1081,7 @@ public:
         pubLaserCloudFull_body_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("/cloud_registered_body", 20);
         pubLaserCloudEffect_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("/cloud_effected", 20);
         pubLaserCloudMap_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("/Laser_map", 20);
-        pubOdomAftMapped_ = this->create_publisher<nav_msgs::msg::Odometry>("/catamaran/odometry", 20);
+        pubOdomAftMapped_ = this->create_publisher<nav_msgs::msg::Odometry>("/Odometry", 20);
         pubPath_ = this->create_publisher<nav_msgs::msg::Path>("/path", 20);
         // pubVelPreUpdate_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/vel_pre_update", 20);
         // pubVelPostUpdate_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("debug/vel_post_update", 20);
@@ -1210,11 +1210,11 @@ private:
     //     const V3D vel_body_delta = vel_body_post_update - vel_body_pre_update;
 
     //     pubVelPreUpdate_->publish(
-    //         vector3StampedFromEigen(vel_pre_update, stamp, "map"));
+    //         vector3StampedFromEigen(vel_pre_update, stamp, "blueboat/map"));
     //     pubVelPostUpdate_->publish(
-    //         vector3StampedFromEigen(vel_post_update, stamp, "map"));
+    //         vector3StampedFromEigen(vel_post_update, stamp, "blueboat/map"));
     //     pubVelDeltaUpdate_->publish(
-    //         vector3StampedFromEigen(vel_delta, stamp, "map"));
+    //         vector3StampedFromEigen(vel_delta, stamp, "blueboat/map"));
     //     pubVelBodyPreUpdate_->publish(
     //         vector3StampedFromEigen(vel_body_pre_update, stamp, "blueboat/base_link_enu"));
     //     pubVelBodyPostUpdate_->publish(
@@ -1246,15 +1246,15 @@ private:
     //     pubImuAccUnbiasedBody_->publish(
     //         vector3StampedFromEigen(p_imu->get_debug_acc_unbiased_body_last(), stamp, "blueboat/imu_link"));
     //     pubImuAccWorldNoGrav_->publish(
-    //         vector3StampedFromEigen(p_imu->get_debug_acc_world_no_grav_last(), stamp, "map"));
+    //         vector3StampedFromEigen(p_imu->get_debug_acc_world_no_grav_last(), stamp, "blueboat/map"));
     //     pubImuAccWorldWithGrav_->publish(
-    //         vector3StampedFromEigen(p_imu->get_debug_acc_world_with_grav_last(), stamp, "map"));
+    //         vector3StampedFromEigen(p_imu->get_debug_acc_world_with_grav_last(), stamp, "blueboat/map"));
     //     pubImuBiasAcc_->publish(
     //         vector3StampedFromEigen(p_imu->get_debug_bias_acc_last(), stamp, "blueboat/imu_link"));
     //     pubImuBiasGyr_->publish(
     //         vector3StampedFromEigen(p_imu->get_debug_bias_gyr_last(), stamp, "blueboat/imu_link"));
     //     pubImuGravity_->publish(
-    //         vector3StampedFromEigen(p_imu->get_debug_gravity_last(), stamp, "map"));
+    //         vector3StampedFromEigen(p_imu->get_debug_gravity_last(), stamp, "blueboat/map"));
 
     //     std_msgs::msg::Float64 mean_acc_norm_msg;
     //     mean_acc_norm_msg.data = p_imu->get_debug_mean_acc_norm();
